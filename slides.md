@@ -16,7 +16,7 @@ Over the course of acquisitions and expanding the products we have come out with
 
 ~~
 
-//TODO INSERT PIC
+![Subset Arch](images/subset-arch.png)
 
 ~~~~
 ## Where Grails Fits
