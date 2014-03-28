@@ -12,7 +12,7 @@ TechLead at ReachLocal
 ~~~~
 ## Our Architecture
 
-Over the course of acuasitions and expanding the products we have come out with a polyglot architecture including Java, Groovy, Ruby, PHP, Node, and PERL. In order to take advantage of our exsisting talent and software, we have started down the micro-service path.
+Over the course of acquisitions and expanding the products we have come out with a polyglot architecture including Java, Groovy, Ruby, PHP, Node, and PERL. In order to take advantage of our existing talent and software, we have started down the micro-service path.
 
 ~~
 
@@ -36,7 +36,7 @@ Over the course of acuasitions and expanding the products we have come out with 
 Acts as the source of truth about subscriptions.
 
   * Exposes the Subscription REST Resource
-  * Emminates Events
+  * Emanates Events
 
 ~~
 ## Requirements
@@ -77,4 +77,194 @@ All our Grails micro services start out the same way.
 
 ~~~~
 ## Customizing our Service
+
+We add scenarios, using cucumber allows us to keep our testing more DRY.
+
+~~
+
+	Scenario: Get nonexistent subscription by ID
+	 Given I am a valid api client
+	 And A valid subscription ID which does not match any subscription
+	 When I request a subscription by ID
+	 Then I get a 404 response
+
+~~
+
+	Scenario: Get existing subscription by ID
+	 Given I am a valid api client
+	 And A valid subscription ID which matches a subscription
+	 When I request a subscription by ID
+	 Then I get a 200 response
+
+~~
+
+	Given(~'^A valid subscription ID which matches a subscription$') { ->
+		//Have a valid subscription which exposes an ID
+	}
+	Given(~'^A valid subscription ID which does not match any subscription$') { ->
+		//Have an ID which is valid but no matching subscription
+	}
+	When(~'^I request a subscription by ID$') { ->
+		//Do actual request
+	}
+	Then(~'^I get a (\\d+) response$') { int statusCode ->
+		if (response.statusCode != statusCode) {
+			println response.asString()
+		}
+
+		assert response.statusCode == statusCode
+	}
+
+~~~~
+## What we reused
+
+  * Health Checks
+  * Security
+  * Server Setup
+  * Deployments
+  * SI Components 
+
+~~~~
+## Health Checks
+
+To support reusable monitoring we expose a health check in a known way that attempts to be both human readable and programmatically useful. 
+
+~~
+### Example 
+
+_Status Code_ 200
+
+	{
+	  "dependencies": {
+	    "database":"OK",
+	    "file-access":"WARN"
+	  }
+	} 
+
+~~
+### What was exposed
+
+Via a Grails plugin we share
+
+  * Common healthcheck implementations
+  * A registry of healthchecks 
+  * Controller that supports the expected output
+
+~~~~
+## Security
+
+We do server to server authentication with a token. So checking the `Authorization` header the plugin authenicates a client. 
+
+~~
+### Our Plugin
+
+  * Expects a known GORM object that has an ID which is the token.
+  * Uses a static list of resoure names to secure
+  * Intended to be as light weight as possible
+
+~~
+### Experinces with our plugin
+
+  * Moving away from our custom implementation towards a SpringSecurity grails plugin
+  * Was opt in security which was easy to miss a controller
+  * Intentailly lacked roles which we have found a usecase for now
+
+~~~~
+## How we shared the Plugins
+
+We use an internal Nexus repo, and release plugins to that. 
+
+~~
+### Experiences
+
+* Supports Versioning 
+* Dependency resolution works the way the rest of Grails does
+* Changes don't reload
+
+~~
+### Guide for Internal Plugins
+
+  * Tend to adding features allowing customization.
+  * Each plugin is a project it needs CI, CodeNarc, etc
+  * Use Versioning
+  * CI pushing out SNAPSHOT versions is very helpful
+
+~~~~
+## Server Setup
+
+We use puppet to automate our server setup. Using classes we share default setup for a Tomcat server.
+
+~~
+## init.pp
+
+	class apps_subscription_api (
+	 $heap_min = '256m',
+	 $heap_max = '1024m',
+	 $permgen_size = '1024m'
+	){
+	 class { 'standard_tomcat7_web_server':
+	 minimum_heap => $heap_min,
+	 maximum_heap => $heap_max,
+	 permgen_size => $permgen_size,
+	 }
+
+	 include apps_subscription_api::config
+
+	 base::nagios::hostgroup { "rsubscription_api_servers": }
+	 base::nagios::hostparam { "_healthuri": value => '/health' }
+	}
+
+~~
+## config.pp
+
+	class apps_subscription_api::config {
+
+	 file { '/rl/path/configs/subscription-config.groovy':
+	  ensure => present,
+	  owner => tomcat7,
+	  group     => tomcat7,
+	  mode      => '0400',
+	  content   => template('apps_subscription_api/subscription-config.groovy.erb'),
+	  require   => File['/rl/path/configs']
+	  }
+	}
+
+~~~~
+## Deployments
+
+We automate our deployments via custom bash scripts kicked off by bamboo deployments.
+
+~~
+## Changes per Service
+
+  * Server List
+  * Artifact Name
+  * Deployment permissions
+
+~~~~
+## Spring Integration Components
+
+~~~~
+## Pitfalls
+
+  * Poor communications between teams gets worse
+  * Coordinating Releases
+  * Development to spec vs finished service
+  * Leaving in -SNAPSHOT dependencies 
+
+~~~~
+## MicroService Checklist
+
+  * Low overhead to start new projects
+  * Internal maven repo
+  * Automated deployments
+  * Server configuration management
+  * Good team to team communication
+
+~~~~
+## Open Questions
+
+  * Correct size of microservices
+  * Pure REST vs RESTful
+  * Security: Centralized vs Decentralized
 
