@@ -244,6 +244,16 @@ We automate our deployments via custom bash scripts kicked off by bamboo deploym
 ~~~~
 ## Spring Integration Components
 
+Our spring integration apps tend to need the same filters and transformers for our Events. Grails apps are not the only users of these components.
+
+~~
+### Shared via a JAR
+
+  * Exposes a Pojo that repersents our internal idea of an Event
+  * Deduplication filter
+  * Built to include the least dependencies
+
+
 ~~~~
 ## Pitfalls
 
